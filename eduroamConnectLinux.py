@@ -79,8 +79,8 @@ def wpaSupplicantConfig(identity, client_cert, ca_cert, private_key_password, pr
         ca_cert="\\\"%s\\\""
         private_key_passwd="\\\"%s\\\""
         private_key="\\\"%s\\\""
-        }\" > /etc/wpa_supplicant.conf\' """ \
-        % (identity, client_cert, ca_cert, private_key_password, private_key), shell=True)
+        }\" > %s\' """ \
+        % (identity, client_cert, ca_cert, private_key_password, private_key, configPath), shell=True)
         call("""sudo chown root:root %s""" % (configPath), shell=True)
     except:
         return False
@@ -97,13 +97,12 @@ def wpaSupplicantSetUp(configPath, ifName=getIfName(), driver=""):
         return False
     # Wait for WPA supplicant to complete negotiation
     wait_time = 1
-    while("channel" not in str(check_output("""iw %s info""" % (ifName), shell=True))):
+    while(not isConnected()):
         sleep(wait_time)
         wait_time = wait_time * 2
         if(wait_time > 100):
             print("Could not finish negotiation process, connection failed")
             return False
-    sleep(5)
     try:
         call("""sudo dhclient %s""" % (ifName), shell = True)
     except:
@@ -112,7 +111,7 @@ def wpaSupplicantSetUp(configPath, ifName=getIfName(), driver=""):
 
 
 # Connect to eduroam with WPA supplicant
-def wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, private_key, configPath='/etc/wpa_supplicant.conf'):
+def wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, private_key, configPath='/etc/wpa_supplicant/wpa_supplicant.conf'):
     confSuccess= wpaSupplicantConfig(identity, client_cert, ca_cert, private_key_password, private_key,configPath)
     setUpSucess = wpaSupplicantSetUp(configPath)
     return confSuccess and setUpSucess
