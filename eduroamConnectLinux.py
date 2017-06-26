@@ -2,7 +2,7 @@ from subprocess import check_output, call, Popen
 from time import sleep
 
 def main():
-    if(isConnected):
+    if(isConnected()):
         print("You are already connected to eduroam")
         return
     print("Welcome to python client for setting up eduroam with certificates")
