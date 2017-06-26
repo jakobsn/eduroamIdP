@@ -119,7 +119,7 @@ def wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, p
 
 
 if __name__ == '__main__':
-    #main()
+    main()
     #getIfName()
     #networkManagerConnect("jakobsn@fyrkat.no","/home/jakobsn/uninettca/jakobsn@fyrkat.no.crt","/home/jakobsn/uninettca/FyrkatRootCA.crt","","/home/jakobsn/uninettca/jakobsn@fyrkat.no.key")
     #print(PackageExists("network-manager"))
