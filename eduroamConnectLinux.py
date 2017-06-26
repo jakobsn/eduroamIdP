@@ -74,6 +74,7 @@ def wpaSupplicantConfig(identity, client_cert, ca_cert, private_key_password, pr
         key_mgmt=WPA-EAP
         proto=WPA2
         eap=TLS
+        phase2="\\\"auth=MSCHAPV2\\\""
         identity="\\\"%s\\\""
         client_cert="\\\"%s\\\""
         ca_cert="\\\"%s\\\""
@@ -118,7 +119,7 @@ def wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, p
 
 
 if __name__ == '__main__':
-    main()
+    #main()
     #getIfName()
     #networkManagerConnect("jakobsn@fyrkat.no","/home/jakobsn/uninettca/jakobsn@fyrkat.no.crt","/home/jakobsn/uninettca/FyrkatRootCA.crt","","/home/jakobsn/uninettca/jakobsn@fyrkat.no.key")
     #print(PackageExists("network-manager"))
@@ -127,3 +128,4 @@ if __name__ == '__main__':
     #print(getIfName())
     #wpaSupplicantConnect("jakobsn@fyrkat.no","/home/jakobsn/uninettca/jakobsn@fyrkat.no.crt","/home/jakobsn/uninettca/FyrkatRootCA.crt","","/home/jakobsn/uninettca/jakobsn@fyrkat.no.key")
     #print(isConnected())
+    #wpaSupplicantConfig("jakobsn@fyrkat.no","/home/jakobsn/uninettca/jakobsn@fyrkat.no.crt","/home/jakobsn/uninettca/FyrkatRootCA.crt","","/home/jakobsn/uninettca/jakobsn@fyrkat.no.key", '/etc/wpa_supplicant/wpa_supplicant.conf')
