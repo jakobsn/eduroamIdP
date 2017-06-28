@@ -5,7 +5,7 @@ def main():
     if(isConnected()):
         choice= input("You are already connected to eduroam, would you like to reset the current configuration? [y/N]: ")
         if(choice is 'y' or choice is 'Y'):
-            if(networkManagerIsConfigured()):
+            if(packageExists("network-manager") && networkManagerIsConfigured()):
                 networkManagerRemoveConnection()
             else:
                 wpaSupplicantRemoveConnection()
