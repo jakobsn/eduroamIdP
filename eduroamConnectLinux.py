@@ -141,7 +141,7 @@ def wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, p
 
 # Remove given config file
 def wpaSupplicantRemoveConnection(configPath='/etc/wpa_supplicant/wpa_supplicant.conf'):
-    call("""sudo rm %s""", % (configPath))
+    call("""sudo rm %s""" % (configPath), shell=True)
 
 
 if __name__ == '__main__':
