@@ -92,7 +92,7 @@ def networkManagerStop():
 # Create config file for WPA supplicant
 def wpaSupplicantConfig(identity, client_cert, ca_cert, private_key_password, private_key, configPath):
     try:
-        call("""sudo bash -c \'printf \" network={
+        call("""sudo bash -c \'printf \"network={
         ssid="\\\"eduroam\\\""
         key_mgmt=WPA-EAP
         proto=WPA2
