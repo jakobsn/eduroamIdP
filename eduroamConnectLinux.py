@@ -5,16 +5,10 @@ def main():
     if(isConnected()):
         choice= input("You are already connected to eduroam, would you like to reset the current configuration? [y/N]: ")
         if(choice is 'y' or choice is 'Y'):
-            if(packageExists("network-manager") and networkManagerIsConfigured()):
-                networkManagerRemoveConnection()
-            else:
-                wpaSupplicantRemoveConnection()
-                print("Current configuration has been removed, you might want to reboot to let the changes apply")
-                return
+            resetConfiguration()
         else:
             return
-
-    print("Welcome to python client for setting up eduroam with certificates")
+    print("Welcome to python client for setting up eduroam with certificates on linux")
     print("Please provide the required information:")
     identity = input("Identity: ")
     client_cert = input("Client certificate (full path): ")
@@ -25,7 +19,7 @@ def main():
     if(packageExists("network-manager")):
         choice= input("Network-manager detected, would you like to use wpa_supplicant instead? (switches off network-manager) [y/N]: ")
         if(choice is 'y' or choice is 'Y'):
-            call("""sudo service network-manager stop""", shell=True)
+            networkManagerStop()
             wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, private_key)
         else:
             networkManagerConnect(identity, client_cert, ca_cert, private_key_password, private_key)
@@ -87,10 +81,18 @@ def networkManagerRemoveConnection():
     call("""nmcli con delete \"eduroam\"""", shell=True)
 
 
+def networkManagerStart():
+    call("""sudo service network-manager start""", shell=True)
+
+
+def networkManagerStop():
+    call("""sudo service network-manager stop""", shell=True)
+
+
 # Create config file for WPA supplicant
 def wpaSupplicantConfig(identity, client_cert, ca_cert, private_key_password, private_key, configPath):
     try:
-        call("""sudo bash -c \'printf \"network={
+        call("""sudo bash -c \'printf \" network={
         ssid="\\\"eduroam\\\""
         key_mgmt=WPA-EAP
         proto=WPA2
@@ -133,15 +135,32 @@ def wpaSupplicantSetUp(configPath, ifName=getIfName(), driver=""):
 
 
 # Connect to eduroam with WPA supplicant
-def wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, private_key, configPath='/etc/wpa_supplicant/wpa_supplicant.conf'):
+def wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, private_key, configPath='/etc/wpa_supplicant.conf'):
     confSuccess= wpaSupplicantConfig(identity, client_cert, ca_cert, private_key_password, private_key,configPath)
     setUpSucess = wpaSupplicantSetUp(configPath)
     return confSuccess and setUpSucess
 
 
 # Remove given config file
-def wpaSupplicantRemoveConnection(configPath='/etc/wpa_supplicant/wpa_supplicant.conf'):
+def wpaSupplicantRemoveConnection(configPath='/etc/wpa_supplicant.conf'):
+    call("""sudo ifconfig wlp3s0 down""", shell=True)
     call("""sudo rm %s""" % (configPath), shell=True)
+    call("""sudo killall wpa_supplicant""", shell=True)
+    call("""sudo /etc/init.d/networking restart""", shell=True)
+
+
+# Reset network configuration
+def resetConfiguration():
+    if(packageExists("network-manager")):
+        networkManagerStart()
+        if(networkManagerIsConfigured()):
+            networkManagerRemoveConnection()
+            return
+        else:
+            networkManagerStop()
+    wpaSupplicantRemoveConnection()
+    print("Current configuration has been removed")
+    return
 
 
 if __name__ == '__main__':
@@ -152,8 +171,10 @@ if __name__ == '__main__':
     #print(PackageExists("wpasupplicant"))
     #print(PackageExists("google-chrome"))
     #print(getIfName())
+    #resetConfiguration()
+    #networkManagerStop()
     #wpaSupplicantConnect("jakobsn@fyrkat.no","/home/jakobsn/uninettca/jakobsn@fyrkat.no.crt","/home/jakobsn/uninettca/FyrkatRootCA.crt","","/home/jakobsn/uninettca/jakobsn@fyrkat.no.key")
     #print(isConnected())
-    #wpaSupplicantConfig("jakobsn@fyrkat.no","/home/jakobsn/uninettca/jakobsn@fyrkat.no.crt","/home/jakobsn/uninettca/FyrkatRootCA.crt","","/home/jakobsn/uninettca/jakobsn@fyrkat.no.key", '/etc/wpa_supplicant/wpa_supplicant.conf')
+    #wpaSupplicantConfig("jakobsn@fyrkat.no","/home/jakobsn/uninettca/jakobsn@fyrkat.no.crt","/home/jakobsn/uninettca/FyrkatRootCA.crt","","/home/jakobsn/uninettca/jakobsn@fyrkat.no.key", '/etc/wpa_supplicant.conf')
     #print(networkManagerIsConfigured())
     #networkManagerRemoveConnection()
