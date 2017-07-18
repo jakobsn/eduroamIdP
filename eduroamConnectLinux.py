@@ -143,7 +143,6 @@ def wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, p
 
 # Remove given config file
 def wpaSupplicantRemoveConnection(configPath='/etc/wpa_supplicant.conf'):
-    call("""sudo ifconfig wlp3s0 down""", shell=True)
     call("""sudo rm %s""" % (configPath), shell=True)
     call("""sudo killall wpa_supplicant""", shell=True)
     call("""sudo /etc/init.d/networking restart""", shell=True)
