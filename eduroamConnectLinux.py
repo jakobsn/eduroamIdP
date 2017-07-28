@@ -81,21 +81,21 @@ def networkManagerIsConfigured():
 
 # Remove connection from network-manager
 def networkManagerRemoveConnection():
-    call(["sudo", "nmcli", "con", "delete", "eduroam"])
+    call(["nmcli", "con", "delete", "eduroam"])
 
 
 def networkManagerStart():
-    call(["sudo", "service", "network-manager", "start"])
+    call(["service", "network-manager", "start"])
 
 
 def networkManagerStop():
-    call(["sudo", "service", "network-manager", "stop"])
+    call(["service", "network-manager", "stop"])
 
 
 # Create config file for WPA supplicant
 def wpaSupplicantConfig(identity, client_cert, ca_cert, private_key_password, private_key, configPath):
     try:
-        call("""sudo bash -c \'printf \"network={
+        call("""bash -c \'printf \"network={
         ssid="\\\"eduroam\\\""
         key_mgmt=WPA-EAP
         proto=WPA2
@@ -108,7 +108,7 @@ def wpaSupplicantConfig(identity, client_cert, ca_cert, private_key_password, pr
         private_key="\\\"%s\\\""
         }\" > %s\' """ \
         % (identity, client_cert, ca_cert, private_key_password, private_key, configPath), shell=True)
-        call("""sudo chown root:root %s""" % (configPath), shell=True)
+        call("""chown root:root %s""" % (configPath), shell=True)
     except:
         return False
     return True
@@ -120,7 +120,7 @@ def wpaSupplicantSetUp(configPath, ifName=getIfName(), driver=""):
         # The -D flag is added to the driver because the command can be executed without a driver.
         driver = " -D " + driver
     try:
-        Popen(["sudo", "wpa_supplicant", "-c", configPath, "-i", ifName, driver])
+        Popen(["wpa_supplicant", "-c", configPath, "-i", ifName, driver])
     except:
         return False
     # Wait for WPA supplicant to complete negotiation
@@ -132,7 +132,7 @@ def wpaSupplicantSetUp(configPath, ifName=getIfName(), driver=""):
             print("Could not finish negotiation process, connection failed")
             return False
     try:
-        call(["sudo", "dhclient", ifName])
+        call(["dhclient", ifName])
     except:
         return False
     return True
@@ -147,9 +147,9 @@ def wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, p
 
 # Remove given config file
 def wpaSupplicantRemoveConnection(configPath='/etc/wpa_supplicant.conf'):
-    call(["sudo", "rm", configPath])
-    call(["sudo", "killall", "wpa_supplicant"])
-    call(["sudo", "/etc/init.d/networking", "restart"])
+    call(["rm", configPath])
+    call(["killall", "wpa_supplicant"])
+    call(["/etc/init.d/networking", "restart"])
 
 
 # Reset network configuration
