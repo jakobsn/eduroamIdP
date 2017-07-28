@@ -1,5 +1,6 @@
 from subprocess import check_output, call, Popen, PIPE
 from time import sleep
+from os import chown
 
 def main():
     if(isConnected()):
@@ -95,20 +96,22 @@ def networkManagerStop():
 # Create config file for WPA supplicant
 def wpaSupplicantConfig(identity, client_cert, ca_cert, private_key_password, private_key, configPath):
     try:
-        call("""bash -c \'printf \"network={
-        ssid="\\\"eduroam\\\""
-        key_mgmt=WPA-EAP
-        proto=WPA2
-        eap=TLS
-        phase2="\\\"auth=MSCHAPV2\\\""
-        identity="\\\"%s\\\""
-        client_cert="\\\"%s\\\""
-        ca_cert="\\\"%s\\\""
-        private_key_passwd="\\\"%s\\\""
-        private_key="\\\"%s\\\""
-        }\" > %s\' """ \
-        % (identity, client_cert, ca_cert, private_key_password, private_key, configPath), shell=True)
-        call("""chown root:root %s""" % (configPath), shell=True)
+        file = open(configPath, "w")
+        file.write("network={ \n")
+        file.write("ssid=\"eduroam\" \n")
+        file.write("key_mgmt=WPA-EAP \n")
+        file.write("proto=WPA2 \n")
+        file.write("eap=TLS \n")
+        file.write("phase2=\"auth=MSCHAPV2\" \n")
+        file.write("identity=\"%s\" \n" % identity)
+        file.write("client_cert=\"%s\" \n" % client_cert)
+        file.write("ca_cert=\"%s\" \n" % ca_cert)
+        file.write("private_key_passwd=\"%s\" \n" % private_key_password)
+        file.write("private_key=\"%s\" \n" % private_key)
+        file.write("}")
+        file.close()
+
+        chown(configPath, 0, 0)
     except:
         return False
     return True
@@ -140,7 +143,7 @@ def wpaSupplicantSetUp(configPath, ifName=getIfName(), driver=""):
 
 # Connect to eduroam with WPA supplicant
 def wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, private_key, configPath='/etc/wpa_supplicant.conf'):
-    confSuccess= wpaSupplicantConfig(identity, client_cert, ca_cert, private_key_password, private_key,configPath)
+    confSuccess= wpaSupplicantConfig(identity, client_cert, ca_cert, private_key_password, private_key, configPath)
     setUpSucess = wpaSupplicantSetUp(configPath)
     return confSuccess and setUpSucess
 
@@ -158,9 +161,7 @@ def resetConfiguration():
         networkManagerStart()
         if(networkManagerIsConfigured()):
             networkManagerRemoveConnection()
-            return
-        else:
-            networkManagerStop()
+    networkManagerStop()
     wpaSupplicantRemoveConnection()
     print("Current configuration has been removed")
     return
