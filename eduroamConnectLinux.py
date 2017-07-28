@@ -1,4 +1,4 @@
-from subprocess import check_output, call, Popen
+from subprocess import check_output, call, Popen, PIPE
 from time import sleep
 
 def main():
@@ -48,9 +48,13 @@ def getIfName():
 def packageExists(package):
     output = 0
     try:
-        output = check_output('dpkg -l | grep -E \'^ii\' | grep %s' % (package), shell=True)
+        p1 = Popen(["dpkg", "-l"], stdout=PIPE)
+        p2 = Popen(["grep", package], stdin=p1.stdout, stdout=PIPE)
+        output = p2.communicate()[0]
+        print(output)
     except:
         pass
+        #raise
     if output:
         return True
     return False
@@ -60,33 +64,32 @@ def packageExists(package):
 def networkManagerConnect(identity, client_cert, ca_cert, private_key_password, private_key, ifName=getIfName()):
     print("Setting up connection...")
     try:
-        connection = check_output("""nmcli con add type wifi con-name eduroam ifname %s ssid eduroam -- \
-        wifi-sec.key-mgmt wpa-eap 802-1x.eap tls 802-1x.identity %s \
-        802-1x.client-cert %s 802-1x.ca-cert %s 802-1x.private-key-password %s  802-1x.private-key %s"""\
-        % (ifName, identity, client_cert, ca_cert, private_key_password, private_key), shell=True)
+        Popen(["nmcli", "con", "add", "type", "wifi", "con-name", "eduroam", "ifname", ifName, \
+        "ssid", "eduroam", "--", "wifi-sec.key-mgmt", "wpa-eap", "802-1x.eap", "tls", \
+        "802-1x.identity", identity, "802-1x.client-cert", client_cert, "802-1x.ca-cert", ca_cert, \
+        "802-1x.private-key-password", private_key_password, "802-1x.private-key", private_key])
     except:
         return False
-    print(str(connection).strip("b\"").strip('\""').strip("\\n"))
     return True
 
 
 # Check if network-manager has an eduroam configuration
 def networkManagerIsConfigured():
-    connections = check_output("""nmcli connection show""", shell=True)
+    connections = check_output(["nmcli", "connection", "show"])
     return "eduroam" in str(connections)
 
 
 # Remove connection from network-manager
 def networkManagerRemoveConnection():
-    call("""nmcli con delete \"eduroam\"""", shell=True)
+    call(["sudo", "nmcli", "con", "delete", "eduroam"])
 
 
 def networkManagerStart():
-    call("""sudo service network-manager start""", shell=True)
+    call(["sudo", "service", "network-manager", "start"])
 
 
 def networkManagerStop():
-    call("""sudo service network-manager stop""", shell=True)
+    call(["sudo", "service", "network-manager", "stop"])
 
 
 # Create config file for WPA supplicant
@@ -114,9 +117,10 @@ def wpaSupplicantConfig(identity, client_cert, ca_cert, private_key_password, pr
 # Set up the connection with WPA supplicant
 def wpaSupplicantSetUp(configPath, ifName=getIfName(), driver=""):
     if(len(driver)):
+        # The -D flag is added to the driver because the command can be executed without a driver.
         driver = " -D " + driver
     try:
-        Popen("""sudo wpa_supplicant -c %s -i %s%s""" % (configPath, ifName, driver), shell=True)
+        Popen(["sudo", "wpa_supplicant", "-c", configPath, "-i", ifName, driver])
     except:
         return False
     # Wait for WPA supplicant to complete negotiation
@@ -128,7 +132,7 @@ def wpaSupplicantSetUp(configPath, ifName=getIfName(), driver=""):
             print("Could not finish negotiation process, connection failed")
             return False
     try:
-        call("""sudo dhclient %s""" % (ifName), shell = True)
+        call(["sudo", "dhclient", ifName])
     except:
         return False
     return True
@@ -143,9 +147,9 @@ def wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, p
 
 # Remove given config file
 def wpaSupplicantRemoveConnection(configPath='/etc/wpa_supplicant.conf'):
-    call("""sudo rm %s""" % (configPath), shell=True)
-    call("""sudo killall wpa_supplicant""", shell=True)
-    call("""sudo /etc/init.d/networking restart""", shell=True)
+    call(["sudo", "rm", configPath])
+    call(["sudo", "killall", "wpa_supplicant"])
+    call(["sudo", "/etc/init.d/networking", "restart"])
 
 
 # Reset network configuration
@@ -165,12 +169,15 @@ def resetConfiguration():
 if __name__ == '__main__':
     main()
     #getIfName()
-    #networkManagerConnect("jakobsn@fyrkat.no","/home/jakobsn/uninettca/jakobsn@fyrkat.no.crt","/home/jakobsn/uninettca/FyrkatRootCA.crt","","/home/jakobsn/uninettca/jakobsn@fyrkat.no.key")
-    #print(PackageExists("network-manager"))
-    #print(PackageExists("wpasupplicant"))
-    #print(PackageExists("google-chrome"))
-    #print(getIfName())
     #resetConfiguration()
+    #networkManagerStart()
+    #networkManagerRemoveConnection()
+    #networkManagerStop()
+    #networkManagerConnect("jakobsn@fyrkat.no","/home/jakobsn/uninettca/jakobsn@fyrkat.no.crt","/home/jakobsn/uninettca/FyrkatRootCA.crt","","/home/jakobsn/uninettca/jakobsn@fyrkat.no.key")
+    #print(packageExists("network-manager"))
+    #print(packageExists("wpasupplicant"))
+    #print(packageExists("google-chrome"))
+    #print(getIfName())
     #networkManagerStop()
     #wpaSupplicantConnect("jakobsn@fyrkat.no","/home/jakobsn/uninettca/jakobsn@fyrkat.no.crt","/home/jakobsn/uninettca/FyrkatRootCA.crt","","/home/jakobsn/uninettca/jakobsn@fyrkat.no.key")
     #print(isConnected())
