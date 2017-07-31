@@ -3,6 +3,8 @@ from time import sleep
 from os import chown, chmod, makedirs, path, getenv
 from requests import get
 from pwd import getpwnam
+from string import ascii_letters, digits
+from random import randint, SystemRandom
 
 def main(client_cert_url, ca_cert_url, private_key_url, save_path=path.expanduser('~') + '/eduroam_certificates/'):
     if(isConnected()):
@@ -17,12 +19,13 @@ def main(client_cert_url, ca_cert_url, private_key_url, save_path=path.expanduse
     print("Welcome to python client for setting up eduroam with certificates on linux")
     print("Please provide the required information:")
     identity = input("Identity: ")
-    private_key_password = input("Private key password: ")
 
     getAuthenticationFiles(client_cert_url, ca_cert_url, private_key_url, save_path)
     client_cert = save_path + getUrlFileName(client_cert_url)
     ca_cert = save_path + getUrlFileName(ca_cert_url)
     private_key = save_path + getUrlFileName(private_key_url)
+    private_key_password = generatePassword()
+    addPasswordToSSHKey(private_key, private_key_password)
 
     if(packageExists("network-manager")):
         choice= input("Network-manager detected, would you like to use wpa_supplicant instead? (switches off network-manager) [y/N]: ")
@@ -36,6 +39,16 @@ def main(client_cert_url, ca_cert_url, private_key_url, save_path=path.expanduse
             networkManagerConnect(identity, client_cert, ca_cert, private_key, private_key_password)
     else:
         wpaSupplicantConnect(identity, client_cert, ca_cert, private_key, private_key_password)
+
+# Adds password protection to private key
+def addPasswordToSSHKey(private_key, private_key_password):
+    Popen(["ssh-keygen", "-p", "-N", private_key_password, "-f", private_key])
+
+# Generates random password with length between 10 and 30
+def generatePassword():
+    length = randint(10,30)
+    chars = ascii_letters + digits + '!@#$%^&*()'
+    return ''.join(SystemRandom().choice(chars) for i in range(length))
 
 # Return only the filename found at the end of the url
 def getUrlFileName(url):
@@ -120,10 +133,10 @@ def networkManagerStop():
     call(["service", "network-manager", "stop"])
 
 def networkManagerEnable():
-    call(["service", "network-manager", "enable"])
+    call(["systemctl", "enable", "network-manager.service"])
 
 def networkManagerDisable():
-    call(["service", "network-manager", "disable"])
+    call(["systemctl", "disable", "network-manager.service"])
 
 # Create config file for WPA supplicant
 def wpaSupplicantConfig(identity, client_cert, ca_cert, private_key, private_key_password, configPath):
@@ -217,7 +230,7 @@ def makeDirectory(new_path):
         makedirs(new_path)
 
 if __name__ == '__main__':
-    main('http://localhost:8000/jakobsn@fyrkat.no.crt', 'http://localhost:8000/FyrkatRootCA.crt', 'http://localhost:8000/jakobsn@fyrkat.no.key')
+    main('http://localhost:8000/jakobsn@fyrkat.no.crt', 'http://localhost:8000/FyrkatRootCA.crt', 'http://localhost:8000/jakobsn_nopass@fyrkat.no.key')
     #print(getuser())
     #makeDirectory('/home/jakobsn/eduroam_certificates/')
     #getAuthentication(['http://localhost:8000/FyrkatRootCA.crt', 'http://localhost:8000/jakobsn@fyrkat.no.crt', 'http://localhost:8000/jakobsn@fyrkat.no.key'])
@@ -239,3 +252,4 @@ if __name__ == '__main__':
     #print(networkManagerIsConfigured())
     #networkManagerRemoveConnection()
     #print(wpaSupplicantIsConfigured())
+    #print(generatePassword())
