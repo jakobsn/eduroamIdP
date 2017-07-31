@@ -1,7 +1,8 @@
 from subprocess import check_output, call, Popen, PIPE
 from time import sleep
-from os import chown
+from os import chown, makedirs, path, getenv
 from requests import get
+from getpass import getuser
 
 def main():
     if(isConnected()):
@@ -156,28 +157,41 @@ def wpaSupplicantRemoveConnection(configPath='/etc/wpa_supplicant.conf'):
     call(["killall", "wpa_supplicant"])
     call(["/etc/init.d/networking", "restart"])
 
-# TODO: Returnes certificates and key used for authentication retrieved with http
-def getAuthentication(urls, names, savePath='~/eduroam_certificates/'):
-
+# Returns certificates and key used for authentication retrieved with http
+def getAuthentication(urls, names=[], save_path=path.expanduser('~') + '/eduroam_certificates/'):
+    makeDirectory(save_path)
+    if not len(names):
+        names = ['']*len(urls)
+    for url, name in zip(urls, names):
+        print(url)
+        if(not len(name)):
+            name = url.split("/")[-1]
+        getFile(url, save_path + name)
     return
 
-# TODO: Get file with http
-def getFile(url, savePath, name=''):
-    if(not len(name)):
-        name = url.split("/")[-1]
+# Get file with http
+def getFile(url, save_path=''):
     request = get(url)
     print(request.status_code)
-    with open(name, 'wb') as code:
+    with open(save_path, 'wb') as code:
         code.write(request.content)
     return request.status_code == 200
+
+
+def makeDirectory(new_path):
+    if not path.exists(new_path):
+        makedirs(new_path)
+
 
 # TODO: Chown file?
 
 
 if __name__ == '__main__':
     #main()
-    #print(getAuthentication("hei", "ha"))
-    print(getFile('http://localhost:8000/FyrkatRootCA.crt', '/home/jakobsn/eduroam_certificates/', 'FyrkatRootCA.crt'))
+    #print(getuser())
+    #makeDirectory('/home/jakobsn/eduroam_certificates/')
+    getAuthentication(['http://localhost:8000/FyrkatRootCA.crt', 'http://localhost:8000/jakobsn@fyrkat.no.crt', 'http://localhost:8000/jakobsn@fyrkat.no.key'])
+    #print(getFile('http://localhost:8000/FyrkatRootCA.crt', '/home/jakobsn/eduroam_certificates/', 'FyrkatRootCA.crt'))
     #getIfName()
     #resetConfiguration()
     #networkManagerStart()
