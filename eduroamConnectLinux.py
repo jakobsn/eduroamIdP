@@ -29,13 +29,13 @@ def main(client_cert_url, ca_cert_url, private_key_url, save_path=path.expanduse
         if(choice is 'y' or choice is 'Y'):
             networkManagerStop()
             networkManagerDisable()
-            wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, private_key)
+            wpaSupplicantConnect(identity, client_cert, ca_cert, private_key, private_key_password)
         else:
             networkManagerStart()
             networkManagerEnable()
-            networkManagerConnect(identity, client_cert, ca_cert, private_key_password, private_key)
+            networkManagerConnect(identity, client_cert, ca_cert, private_key, private_key_password)
     else:
-        wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, private_key)
+        wpaSupplicantConnect(identity, client_cert, ca_cert, private_key, private_key_password)
 
 # Return only the filename found at the end of the url
 def getUrlFileName(url):
@@ -91,7 +91,7 @@ def resetConfiguration():
     return
 
 # Connect to eduroam with network-manager client
-def networkManagerConnect(identity, client_cert, ca_cert, private_key_password, private_key, ifName=getIfName()):
+def networkManagerConnect(identity, client_cert, ca_cert, private_key, private_key_password, ifName=getIfName()):
     try:
         Popen(["nmcli", "con", "add", "type", "wifi", "con-name", "eduroam", "ifname", ifName, \
         "ssid", "eduroam", "--", "wifi-sec.key-mgmt", "wpa-eap", "802-1x.eap", "tls", \
@@ -126,7 +126,7 @@ def networkManagerDisable():
     call(["service", "network-manager", "disable"])
 
 # Create config file for WPA supplicant
-def wpaSupplicantConfig(identity, client_cert, ca_cert, private_key_password, private_key, configPath):
+def wpaSupplicantConfig(identity, client_cert, ca_cert, private_key, private_key_password, configPath):
     try:
         file = open(configPath, "w")
         file.write("network={ \n")
@@ -173,8 +173,8 @@ def wpaSupplicantSetUp(configPath, ifName=getIfName(), driver=""):
     return True
 
 # Connect to eduroam with WPA supplicant
-def wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, private_key, configPath='/etc/wpa_supplicant.conf'):
-    confSuccess= wpaSupplicantConfig(identity, client_cert, ca_cert, private_key_password, private_key, configPath)
+def wpaSupplicantConnect(identity, client_cert, ca_cert, private_key, private_key_password, configPath='/etc/wpa_supplicant.conf'):
+    confSuccess= wpaSupplicantConfig(identity, client_cert, ca_cert, private_key, private_key_password, configPath)
     setUpSucess = wpaSupplicantSetUp(configPath)
     return confSuccess and setUpSucess
 
