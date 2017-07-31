@@ -1,52 +1,72 @@
 from subprocess import check_output, call, Popen, PIPE
 from time import sleep
-from os import chown, makedirs, path, getenv
+from os import chown, chmod, makedirs, path, getenv
 from requests import get
-from getpass import getuser
+from pwd import getpwnam
 
-def main():
+def main(client_cert_url, ca_cert_url, private_key_url, save_path=path.expanduser('~') + '/eduroam_certificates/'):
     if(isConnected()):
         choice= input("You are already connected to eduroam, would you like to reset the current configuration? [y/N]: ")
         if(choice is 'y' or choice is 'Y'):
             resetConfiguration()
         else:
             return
+    # If the network is configured but not connected that probably means that the configuration is corrupt, and will be reset.
+    elif(networkManagerIsConfigured() or wpaSupplicantIsConfigured()):
+        resetConfiguration()
     print("Welcome to python client for setting up eduroam with certificates on linux")
     print("Please provide the required information:")
     identity = input("Identity: ")
-    client_cert = input("Client certificate (full path): ")
-    ca_cert = input("Certification authority certificate (full path): ")
+    #client_cert = input("Client certificate (full path): ")
+    #ca_cert = input("Certification authority certificate (full path): ")
     private_key_password = input("Private key password: ")
-    private_key = input("Private key (full path): ")
+    #private_key = input("Private key (full path): ")
+
+    getAuthenticationFiles(client_cert_url, ca_cert_url, private_key_url, save_path)
+    client_cert = save_path + getUrlFileName(client_cert_url)
+    ca_cert = save_path + getUrlFileName(ca_cert_url)
+    private_key = save_path + getUrlFileName(private_key_url)
 
     if(packageExists("network-manager")):
         choice= input("Network-manager detected, would you like to use wpa_supplicant instead? (switches off network-manager) [y/N]: ")
         if(choice is 'y' or choice is 'Y'):
             networkManagerStop()
+            networkManagerDisable()
             wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, private_key)
         else:
+            networkManagerStart()
+            networkManagerEnable()
             networkManagerConnect(identity, client_cert, ca_cert, private_key_password, private_key)
     else:
         wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, private_key)
 
+# Return only the filename found at the end of the url
+def getUrlFileName(url):
+    return url.split("/")[-1]
+
+def getUserName():
+    return path.expanduser('~').split("/")[-1]
+
+def getUserId(name=getUserName()):
+    return getpwnam(name).pw_uid
+
+def getGroupId(name=getUserName()):
+    return getpwnam(name).pw_gid
 
 # Retrieve the wireless interface
 def getInterface():
     return check_output('iwconfig 2>&1 | grep IEEE', shell=True)
-
 
 # Check if the user already is connected to eduroam
 def isConnected():
     interface = getInterface()
     return 'eduroam' in str(interface)
 
-
 # Retrieve wireless interface name
 def getIfName():
     interface = getInterface()
     ifName = str(interface).split(" ")[0].replace("b\'", "")
     return ifName
-
 
 # Check if given package is installed in the system
 def packageExists(package):
@@ -55,7 +75,6 @@ def packageExists(package):
         p1 = Popen(["dpkg", "-l"], stdout=PIPE)
         p2 = Popen(["grep", package], stdin=p1.stdout, stdout=PIPE)
         output = p2.communicate()[0]
-        print(output)
     except:
         pass
         #raise
@@ -63,10 +82,19 @@ def packageExists(package):
         return True
     return False
 
+# Reset network configuration
+def resetConfiguration():
+    if(packageExists("network-manager")):
+        networkManagerStart()
+        if(networkManagerIsConfigured()):
+            networkManagerRemoveConnection()
+    networkManagerStop()
+    wpaSupplicantRemoveConnection()
+    print("Current configuration has been removed")
+    return
 
 # Connect to eduroam with network-manager client
 def networkManagerConnect(identity, client_cert, ca_cert, private_key_password, private_key, ifName=getIfName()):
-    print("Setting up connection...")
     try:
         Popen(["nmcli", "con", "add", "type", "wifi", "con-name", "eduroam", "ifname", ifName, \
         "ssid", "eduroam", "--", "wifi-sec.key-mgmt", "wpa-eap", "802-1x.eap", "tls", \
@@ -76,25 +104,29 @@ def networkManagerConnect(identity, client_cert, ca_cert, private_key_password, 
         return False
     return True
 
-
 # Check if network-manager has an eduroam configuration
 def networkManagerIsConfigured():
+    if(not packageExists("network-manager")):
+        return False
+    networkManagerStart()
     connections = check_output(["nmcli", "connection", "show"])
     return "eduroam" in str(connections)
-
 
 # Remove connection from network-manager
 def networkManagerRemoveConnection():
     call(["nmcli", "con", "delete", "eduroam"])
 
-
 def networkManagerStart():
     call(["service", "network-manager", "start"])
-
 
 def networkManagerStop():
     call(["service", "network-manager", "stop"])
 
+def networkManagerEnable():
+    call(["service", "network-manager", "enable"])
+
+def networkManagerDisable():
+    call(["service", "network-manager", "disable"])
 
 # Create config file for WPA supplicant
 def wpaSupplicantConfig(identity, client_cert, ca_cert, private_key_password, private_key, configPath):
@@ -114,11 +146,11 @@ def wpaSupplicantConfig(identity, client_cert, ca_cert, private_key_password, pr
         file.write("}")
         file.close()
 
-        chown(configPath, 0, 0)
+        chown(configPath, getUserId(), getGroupId())
+        chmod(configPath, 960)
     except:
         return False
     return True
-
 
 # Set up the connection with WPA supplicant
 def wpaSupplicantSetUp(configPath, ifName=getIfName(), driver=""):
@@ -126,7 +158,7 @@ def wpaSupplicantSetUp(configPath, ifName=getIfName(), driver=""):
         # The -D flag is added to the driver because the command can be executed without a driver.
         driver = " -D " + driver
     try:
-        Popen(["wpa_supplicant", "-c", configPath, "-i", ifName, driver])
+        Popen(["wpa_supplicant", "-c", configPath, "-i", ifName, driver, "-B"])
     except:
         return False
     # Wait for WPA supplicant to complete negotiation
@@ -143,13 +175,11 @@ def wpaSupplicantSetUp(configPath, ifName=getIfName(), driver=""):
         return False
     return True
 
-
 # Connect to eduroam with WPA supplicant
 def wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, private_key, configPath='/etc/wpa_supplicant.conf'):
     confSuccess= wpaSupplicantConfig(identity, client_cert, ca_cert, private_key_password, private_key, configPath)
     setUpSucess = wpaSupplicantSetUp(configPath)
     return confSuccess and setUpSucess
-
 
 # Remove given config file
 def wpaSupplicantRemoveConnection(configPath='/etc/wpa_supplicant.conf'):
@@ -157,40 +187,39 @@ def wpaSupplicantRemoveConnection(configPath='/etc/wpa_supplicant.conf'):
     call(["killall", "wpa_supplicant"])
     call(["/etc/init.d/networking", "restart"])
 
-# Returns certificates and key used for authentication retrieved with http
-def getAuthentication(urls, names=[], save_path=path.expanduser('~') + '/eduroam_certificates/'):
+# TODO:
+def wpaSupplicantIsConfigured():
+    return False
+
+# Gets authentication files and stores them in a local folder
+def getAuthenticationFiles(client_cert_url, ca_cert_url, private_key_url, save_path):
     makeDirectory(save_path)
-    if not len(names):
-        names = ['']*len(urls)
-    for url, name in zip(urls, names):
-        print(url)
-        if(not len(name)):
-            name = url.split("/")[-1]
+    chown(save_path, getUserId(), getGroupId())
+    chmod(save_path, 960)
+    for url in [client_cert_url, ca_cert_url, private_key_url]:
+        name = getUrlFileName(url)
         getFile(url, save_path + name)
+    chown(save_path + name, getUserId(), getGroupId())
+    chmod(save_path + name, 960)
     return
 
-# Get file with http
-def getFile(url, save_path=''):
+# Get file with http request
+def getFile(url, save_path):
     request = get(url)
-    print(request.status_code)
     with open(save_path, 'wb') as code:
         code.write(request.content)
     return request.status_code == 200
 
-
+# Create new directory
 def makeDirectory(new_path):
     if not path.exists(new_path):
         makedirs(new_path)
 
-
-# TODO: Chown file?
-
-
 if __name__ == '__main__':
-    #main()
+    main('http://localhost:8000/jakobsn@fyrkat.no.crt', 'http://localhost:8000/FyrkatRootCA.crt', 'http://localhost:8000/jakobsn@fyrkat.no.key')
     #print(getuser())
     #makeDirectory('/home/jakobsn/eduroam_certificates/')
-    getAuthentication(['http://localhost:8000/FyrkatRootCA.crt', 'http://localhost:8000/jakobsn@fyrkat.no.crt', 'http://localhost:8000/jakobsn@fyrkat.no.key'])
+    #getAuthentication(['http://localhost:8000/FyrkatRootCA.crt', 'http://localhost:8000/jakobsn@fyrkat.no.crt', 'http://localhost:8000/jakobsn@fyrkat.no.key'])
     #print(getFile('http://localhost:8000/FyrkatRootCA.crt', '/home/jakobsn/eduroam_certificates/', 'FyrkatRootCA.crt'))
     #getIfName()
     #resetConfiguration()
