@@ -17,10 +17,7 @@ def main(client_cert_url, ca_cert_url, private_key_url, save_path=path.expanduse
     print("Welcome to python client for setting up eduroam with certificates on linux")
     print("Please provide the required information:")
     identity = input("Identity: ")
-    #client_cert = input("Client certificate (full path): ")
-    #ca_cert = input("Certification authority certificate (full path): ")
     private_key_password = input("Private key password: ")
-    #private_key = input("Private key (full path): ")
 
     getAuthenticationFiles(client_cert_url, ca_cert_url, private_key_url, save_path)
     client_cert = save_path + getUrlFileName(client_cert_url)
@@ -187,9 +184,13 @@ def wpaSupplicantRemoveConnection(configPath='/etc/wpa_supplicant.conf'):
     call(["killall", "wpa_supplicant"])
     call(["/etc/init.d/networking", "restart"])
 
-# TODO:
+# Check if the config file for eduroam connection exists
 def wpaSupplicantIsConfigured():
-    return False
+    try:
+        output = check_output(['grep', 'eduroam', '/etc/wpa_supplicant.conf'])
+    except:
+        return False
+    return True
 
 # Gets authentication files and stores them in a local folder
 def getAuthenticationFiles(client_cert_url, ca_cert_url, private_key_url, save_path):
@@ -237,3 +238,4 @@ if __name__ == '__main__':
     #wpaSupplicantConfig("jakobsn@fyrkat.no","/home/jakobsn/uninettca/jakobsn@fyrkat.no.crt","/home/jakobsn/uninettca/FyrkatRootCA.crt","","/home/jakobsn/uninettca/jakobsn@fyrkat.no.key", '/etc/wpa_supplicant.conf')
     #print(networkManagerIsConfigured())
     #networkManagerRemoveConnection()
+    #print(wpaSupplicantIsConfigured())
