@@ -1,6 +1,7 @@
 from subprocess import check_output, call, Popen, PIPE
 from time import sleep
 from os import chown
+from requests import get
 
 def main():
     if(isConnected()):
@@ -28,6 +29,7 @@ def main():
         wpaSupplicantConnect(identity, client_cert, ca_cert, private_key_password, private_key)
 
 
+# Retrieve the wireless interface
 def getInterface():
     return check_output('iwconfig 2>&1 | grep IEEE', shell=True)
 
@@ -154,21 +156,28 @@ def wpaSupplicantRemoveConnection(configPath='/etc/wpa_supplicant.conf'):
     call(["killall", "wpa_supplicant"])
     call(["/etc/init.d/networking", "restart"])
 
+# TODO: Returnes certificates and key used for authentication retrieved with http
+def getAuthentication(urls, names, savePath='~/eduroam_certificates/'):
 
-# Reset network configuration
-def resetConfiguration():
-    if(packageExists("network-manager")):
-        networkManagerStart()
-        if(networkManagerIsConfigured()):
-            networkManagerRemoveConnection()
-    networkManagerStop()
-    wpaSupplicantRemoveConnection()
-    print("Current configuration has been removed")
     return
+
+# TODO: Get file with http
+def getFile(url, savePath, name=''):
+    if(not len(name)):
+        name = url.split("/")[-1]
+    request = get(url)
+    print(request.status_code)
+    with open(name, 'wb') as code:
+        code.write(request.content)
+    return request.status_code == 200
+
+# TODO: Chown file?
 
 
 if __name__ == '__main__':
-    main()
+    #main()
+    #print(getAuthentication("hei", "ha"))
+    print(getFile('http://localhost:8000/FyrkatRootCA.crt', '/home/jakobsn/eduroam_certificates/', 'FyrkatRootCA.crt'))
     #getIfName()
     #resetConfiguration()
     #networkManagerStart()
