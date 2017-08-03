@@ -157,7 +157,7 @@ def wpaSupplicantConfig(identity, client_cert, ca_cert, private_key, private_key
         file.close()
 
         chown(configPath, getUserId(), getGroupId())
-        chmod(configPath, 960)
+        chmod(configPath, 600)
     except:
         return False
     return True
