@@ -16,7 +16,6 @@ def main(client_cert_url, ca_cert_url, private_key_url, save_path=path.expanduse
     Press OK to get started:", title="Eduroam connect", width=50)
 
     if(isConnected()):
-        #choice= input("You are already connected to eduroam, would you like to reset the current configuration? [y/N]: ")
         code = d.yesno("You are already connected to eduroam, would you like to reset the current configuration?", width=50)
         if(code is d.OK):
             resetConfiguration()
@@ -38,17 +37,12 @@ def main(client_cert_url, ca_cert_url, private_key_url, save_path=path.expanduse
     addPasswordToSSHKey(private_key, private_key_password)
 
     if(packageExists("network-manager")):
-        #choice= input("Network-manager detected, would you like to use wpa_supplicant instead? (switches off network-manager) [y/N]: ")
         code = d.yesno("Network-manager detected, would you like to disable Network-manager and use wpa_supplicant instead? (Not recommended)", width=50)
-        if(code is d.OK):
-            networkManagerStop()
-            networkManagerDisable()
-            wpaSupplicantConnect(identity, client_cert, ca_cert, private_key, private_key_password)
-        else:
-            networkManagerStart()
-            networkManagerEnable()
-            networkManagerConnect(identity, client_cert, ca_cert, private_key, private_key_password)
+        networkManagerStart()
+        networkManagerEnable()
+        networkManagerConnect(identity, client_cert, ca_cert, private_key, private_key_password)
     else:
+        d.msgbox("Network-manager was not detected, setting up eduroam with wpa_supplicant. Install Network-manager manually if you want to use it instead", title="I", width=50)
         wpaSupplicantConnect(identity, client_cert, ca_cert, private_key, private_key_password)
 
 # Adds password protection to private key
@@ -66,7 +60,7 @@ def getUrlFileName(url):
     return url.split("/")[-1]
 
 def getUserName():
-    return getenv("SUDO_USER"))
+    return getenv("SUDO_USER")
 
 def getUserId(name=getUserName()):
     return getpwnam(name).pw_uid
@@ -123,7 +117,7 @@ def networkManagerConnect(identity, client_cert, ca_cert, private_key, private_k
     except:
         d.msgbox(process.communicate()[0].decode('utf-8'), title="Error", width=50)
         return False
-    d.msgbox(process.communicate()[0].decode('utf-8'), title="Success", width=50)
+    d.msgbox("Succesfully added connection".decode('utf-8'), title="Success", width=50)
     return True
 
 # Check if network-manager has an eduroam configuration
