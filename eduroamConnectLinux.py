@@ -66,7 +66,7 @@ def getUrlFileName(url):
     return url.split("/")[-1]
 
 def getUserName():
-    return path.expanduser('~').split("/")[-1]
+    return getenv("SUDO_USER"))
 
 def getUserId(name=getUserName()):
     return getpwnam(name).pw_uid
@@ -248,7 +248,7 @@ def makeDirectory(new_path):
 
 if __name__ == '__main__':
     main('http://localhost:8000/jakobsn@fyrkat.no.crt', 'http://localhost:8000/FyrkatRootCA.crt', 'http://localhost:8000/jakobsn_nopass@fyrkat.no.key')
-    #print(getuser())
+    #print(getUserName())
     #makeDirectory('/home/jakobsn/eduroam_certificates/')
     #getAuthentication(['http://localhost:8000/FyrkatRootCA.crt', 'http://localhost:8000/jakobsn@fyrkat.no.crt', 'http://localhost:8000/jakobsn@fyrkat.no.key'])
     #print(getFile('http://localhost:8000/FyrkatRootCA.crt', '/home/jakobsn/eduroam_certificates/', 'FyrkatRootCA.crt'))
