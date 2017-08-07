@@ -5,20 +5,30 @@ from requests import get
 from pwd import getpwnam
 from string import ascii_letters, digits
 from random import randint, SystemRandom
+from dialog import Dialog
+
+# Create Dialog object to create Dialog widgets
+d = Dialog(dialog="dialog")
 
 def main(client_cert_url, ca_cert_url, private_key_url, save_path=path.expanduser('~') + '/eduroam_certificates/'):
+
+    d.msgbox("Welcome to python client for setting up eduroam with certificates on linux \
+    Press OK to get started:", title="Eduroam connect", width=50)
+
     if(isConnected()):
-        choice= input("You are already connected to eduroam, would you like to reset the current configuration? [y/N]: ")
-        if(choice is 'y' or choice is 'Y'):
+        #choice= input("You are already connected to eduroam, would you like to reset the current configuration? [y/N]: ")
+        code = d.yesno("You are already connected to eduroam, would you like to reset the current configuration?", width=50)
+        if(code is d.OK):
             resetConfiguration()
         else:
             return
     # If the network is configured but not connected that probably means that the configuration is corrupt, and will be reset.
     elif(networkManagerIsConfigured() or wpaSupplicantIsConfigured()):
         resetConfiguration()
-    print("Welcome to python client for setting up eduroam with certificates on linux")
-    print("Please provide the required information:")
-    identity = input("Identity: ")
+
+    code, identity = d.inputbox("Please provide your user ID", width=50)
+    if(code is d.CANCEL):
+        return
 
     getAuthenticationFiles(client_cert_url, ca_cert_url, private_key_url, save_path)
     client_cert = save_path + getUrlFileName(client_cert_url)
@@ -28,8 +38,9 @@ def main(client_cert_url, ca_cert_url, private_key_url, save_path=path.expanduse
     addPasswordToSSHKey(private_key, private_key_password)
 
     if(packageExists("network-manager")):
-        choice= input("Network-manager detected, would you like to use wpa_supplicant instead? (switches off network-manager) [y/N]: ")
-        if(choice is 'y' or choice is 'Y'):
+        #choice= input("Network-manager detected, would you like to use wpa_supplicant instead? (switches off network-manager) [y/N]: ")
+        code = d.yesno("Network-manager detected, would you like to disable Network-manager and use wpa_supplicant instead? (Not recommended)", width=50)
+        if(code is d.OK):
             networkManagerStop()
             networkManagerDisable()
             wpaSupplicantConnect(identity, client_cert, ca_cert, private_key, private_key_password)
@@ -87,7 +98,6 @@ def packageExists(package):
         output = p2.communicate()[0]
     except:
         pass
-        #raise
     if output:
         return True
     return False
@@ -100,18 +110,20 @@ def resetConfiguration():
             networkManagerRemoveConnection()
     networkManagerStop()
     wpaSupplicantRemoveConnection()
-    print("Current configuration has been removed")
+    d.msgbox("Current configuration has been removed", title="Success", width=50)
     return
 
 # Connect to eduroam with network-manager client
 def networkManagerConnect(identity, client_cert, ca_cert, private_key, private_key_password, ifName=getIfName()):
     try:
-        Popen(["nmcli", "con", "add", "type", "wifi", "con-name", "eduroam", "ifname", ifName, \
+        process = Popen(["nmcli", "con", "add", "type", "wifi", "con-name", "eduroam", "ifname", ifName, \
         "ssid", "eduroam", "--", "wifi-sec.key-mgmt", "wpa-eap", "802-1x.eap", "tls", \
         "802-1x.identity", identity, "802-1x.client-cert", client_cert, "802-1x.ca-cert", ca_cert, \
-        "802-1x.private-key-password", private_key_password, "802-1x.private-key", private_key])
+        "802-1x.private-key-password", private_key_password, "802-1x.private-key", private_key], stdout=PIPE)
     except:
+        d.msgbox(process.communicate()[0].decode('utf-8'), title="Error", width=50)
         return False
+    d.msgbox(process.communicate()[0].decode('utf-8'), title="Success", width=50)
     return True
 
 # Check if network-manager has an eduroam configuration
@@ -157,7 +169,7 @@ def wpaSupplicantConfig(identity, client_cert, ca_cert, private_key, private_key
         file.close()
 
         chown(configPath, getUserId(), getGroupId())
-        chmod(configPath, 600)
+        chmod(configPath, 960)
     except:
         return False
     return True
@@ -168,7 +180,7 @@ def wpaSupplicantSetUp(configPath, ifName=getIfName(), driver=""):
         # The -D flag is added to the driver because the command can be executed without a driver.
         driver = " -D " + driver
     try:
-        Popen(["wpa_supplicant", "-c", configPath, "-i", ifName, driver, "-B"])
+        process = Popen(["wpa_supplicant", "-c", configPath, "-i", ifName, driver, "-B"])
     except:
         return False
     # Wait for WPA supplicant to complete negotiation
@@ -177,7 +189,7 @@ def wpaSupplicantSetUp(configPath, ifName=getIfName(), driver=""):
         sleep(wait_time)
         wait_time = wait_time * 2
         if(wait_time > 100):
-            print("Could not finish negotiation process, connection failed")
+            d.msgbox("Could not finish negotiation process, connection failed", title="Error", width=50)
             return False
     try:
         call(["dhclient", ifName])
@@ -189,11 +201,16 @@ def wpaSupplicantSetUp(configPath, ifName=getIfName(), driver=""):
 def wpaSupplicantConnect(identity, client_cert, ca_cert, private_key, private_key_password, configPath='/etc/wpa_supplicant.conf'):
     confSuccess= wpaSupplicantConfig(identity, client_cert, ca_cert, private_key, private_key_password, configPath)
     setUpSucess = wpaSupplicantSetUp(configPath)
+    if(confSuccess and setUpSucess):
+        d.msgbox("wpa_supplicant has successfully been configured", title="Success", width=50)
     return confSuccess and setUpSucess
 
 # Remove given config file
 def wpaSupplicantRemoveConnection(configPath='/etc/wpa_supplicant.conf'):
-    call(["rm", configPath])
+    try:
+        call(["rm", configPath])
+    except:
+        pass
     call(["killall", "wpa_supplicant"])
     call(["/etc/init.d/networking", "restart"])
 
