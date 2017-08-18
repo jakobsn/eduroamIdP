@@ -7,9 +7,11 @@ from string import ascii_letters, digits
 from random import randint, SystemRandom
 from dialog import Dialog
 
-# Create Dialog object to create Dialog widgets
+# Create Dialog object to create Dialog widgets. Used to create simple GUI
 d = Dialog(dialog="dialog")
 
+# Provide urls to this function and you have a working program which sets up an eduroam connection
+# with certificates and key stored in a "eduroam_certificates" folder in the users homefolder.
 def main(client_cert_url, ca_cert_url, private_key_url, save_path=path.expanduser('~') + '/eduroam_certificates/'):
 
     d.msgbox("Welcome to python client for setting up eduroam with certificates on linux \
@@ -29,15 +31,17 @@ def main(client_cert_url, ca_cert_url, private_key_url, save_path=path.expanduse
     if(code is d.CANCEL):
         return
 
+    # Retrieve certificates and keys
     getAuthenticationFiles(client_cert_url, ca_cert_url, private_key_url, save_path)
     client_cert = save_path + getUrlFileName(client_cert_url)
     ca_cert = save_path + getUrlFileName(ca_cert_url)
     private_key = save_path + getUrlFileName(private_key_url)
-    private_key_password = generatePassword()
-    addPasswordToSSHKey(private_key, private_key_password)
+    addPasswordToSSHKey(private_key, generatePassword())
 
+    # Set up network-manager or wpa_supplicant depending on what the user has installed.
+    # Notice that this will use and enable network-manager even if the user has disabled it.
+    # This will be an issue if the user has network-manager installed, but uses wpa_supplicant.
     if(packageExists("network-manager")):
-        code = d.yesno("Network-manager detected, would you like to disable Network-manager and use wpa_supplicant instead? (Not recommended)", width=50)
         networkManagerStart()
         networkManagerEnable()
         networkManagerConnect(identity, client_cert, ca_cert, private_key, private_key_password)
@@ -45,17 +49,17 @@ def main(client_cert_url, ca_cert_url, private_key_url, save_path=path.expanduse
         d.msgbox("Network-manager was not detected, setting up eduroam with wpa_supplicant. Install Network-manager manually if you want to use it instead", title="I", width=50)
         wpaSupplicantConnect(identity, client_cert, ca_cert, private_key, private_key_password)
 
-# Adds password protection to private key
+# Add password protection to private key
 def addPasswordToSSHKey(private_key, private_key_password):
     Popen(["ssh-keygen", "-p", "-N", private_key_password, "-f", private_key])
 
-# Generates random password with length between 10 and 30
+# Generates random password with length between 20 and 30
 def generatePassword():
-    length = randint(10,30)
+    length = randint(20,30)
     chars = ascii_letters + digits + '!@#$%^&*()'
     return ''.join(SystemRandom().choice(chars) for i in range(length))
 
-# Return only the filename found at the end of the url
+# Return only the filename found at the end of an url
 def getUrlFileName(url):
     return url.split("/")[-1]
 
@@ -241,26 +245,5 @@ def makeDirectory(new_path):
         makedirs(new_path)
 
 if __name__ == '__main__':
-    main('http://localhost:8000/jakobsn@fyrkat.no.crt', 'http://localhost:8000/FyrkatRootCA.crt', 'http://localhost:8000/jakobsn_nopass@fyrkat.no.key')
-    #print(getUserName())
-    #makeDirectory('/home/jakobsn/eduroam_certificates/')
-    #getAuthentication(['http://localhost:8000/FyrkatRootCA.crt', 'http://localhost:8000/jakobsn@fyrkat.no.crt', 'http://localhost:8000/jakobsn@fyrkat.no.key'])
-    #print(getFile('http://localhost:8000/FyrkatRootCA.crt', '/home/jakobsn/eduroam_certificates/', 'FyrkatRootCA.crt'))
-    #getIfName()
-    #resetConfiguration()
-    #networkManagerStart()
-    #networkManagerRemoveConnection()
-    #networkManagerStop()
-    #networkManagerConnect("jakobsn@fyrkat.no","/home/jakobsn/uninettca/jakobsn@fyrkat.no.crt","/home/jakobsn/uninettca/FyrkatRootCA.crt","","/home/jakobsn/uninettca/jakobsn@fyrkat.no.key")
-    #print(packageExists("network-manager"))
-    #print(packageExists("wpasupplicant"))
-    #print(packageExists("google-chrome"))
-    #print(getIfName())
-    #networkManagerStop()
-    #wpaSupplicantConnect("jakobsn@fyrkat.no","/home/jakobsn/uninettca/jakobsn@fyrkat.no.crt","/home/jakobsn/uninettca/FyrkatRootCA.crt","","/home/jakobsn/uninettca/jakobsn@fyrkat.no.key")
-    #print(isConnected())
-    #wpaSupplicantConfig("jakobsn@fyrkat.no","/home/jakobsn/uninettca/jakobsn@fyrkat.no.crt","/home/jakobsn/uninettca/FyrkatRootCA.crt","","/home/jakobsn/uninettca/jakobsn@fyrkat.no.key", '/etc/wpa_supplicant.conf')
-    #print(networkManagerIsConfigured())
-    #networkManagerRemoveConnection()
-    #print(wpaSupplicantIsConfigured())
-    #print(generatePassword())
+    # Change these values to actual urls providing certificates and keys, and the program is ready
+    main('user_cert_url', 'auth_cert_url', 'private_key_url')
